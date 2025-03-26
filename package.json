@@ -1,0 +1,23 @@
+{
+  "name": "jira-to-github-issues",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "BSD-3-Clause",
+  "description": "Export JIRA issues to GitHub issues",
+  "bin": {
+    "jira2github": "./src/cli.js"
+  },
+  "dependencies": {
+    "@octokit/auth-app": "^7.1.5",
+    "@octokit/core": "^6.1.4",
+    "fast-xml-parser": "^5.0.9",
+    "jsonfile": "^6.1.0",
+    "turndown": "^7.2.0",
+    "yargs": "^17.7.2"
+  }
+}

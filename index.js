@@ -4,6 +4,7 @@ import {readFile} from 'node:fs/promises';
 
 import gup from "./src/generateUserMap.js";
 import * as import2github from "./src/importToGithub.js";
+import * as getAttachments from "./src/getAttachments.js";
 
 export const getXMLExportData = async function (fileName) {
     const parser = new XMLParser({
@@ -44,7 +45,6 @@ export const exportDataToJson = async function (fileName, output, dryRun = false
 export const generateUserMap = async function (fileName, output, isJSON = false, dryRun = false) {
     let exportData;
     try {
-
         exportData = isJSON ? await jsonfile.readFile(fileName) : await getXMLExportData(fileName);
     } catch (err) {
         throw err;
@@ -54,6 +54,22 @@ export const generateUserMap = async function (fileName, output, isJSON = false,
         console.log(JSON.stringify(gup(exportData), null, 2));
     } else {
         jsonfile.writeFileSync(output, gup(exportData), {spaces: 2});
+    }
+};
+
+export const fetchAttachments = async function (fileName, output, isJSON = false, dryRun = false, options = {}) {
+    let exportData;
+
+    try {
+        exportData = isJSON ? await jsonfile.readFile(fileName) : await getXMLExportData(fileName);
+    } catch (err) {
+        throw err;
+    }
+
+    let result = await getAttachments.getAttachments(exportData, {output: output, dryRun: dryRun, ...options});
+
+    if (dryRun) {
+        console.log(JSON.stringify(result, null, 2));
     }
 };
 
@@ -77,6 +93,11 @@ export const importIssues = async function (fileName, output, userMapFileName, i
     let userMap = userMapFileName ? await jsonfile.readFile(userMapFileName) : gup(exportData);
 
     let data = await import2github.submitIssue(exportData, userMap, opts);
+
+    if (dryRun) {
+        let numComments = data.issues.reduce((accumulator, issue) => accumulator + issue.comments.length, 0);
+        console.log(`issues: ${data.issues.length}\ncomments: ${numComments}\ntotal requests: ${data.issues.length + numComments}`);
+    }
 
     jsonfile.writeFileSync(output, data, {spaces: 2});
 }

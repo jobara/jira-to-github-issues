@@ -71,6 +71,14 @@ yargs(hideBin(process.argv))
             jira2github.generateUserMap(argv.file, argv.output, argv.json, argv.dryRun);
         }
     })
+    .command({
+        command: 'fetchAttachments',
+        aliases: ['fetchAttachments', 'attachments'],
+        desc: 'Download attachments',
+        handler: async (argv) => {
+            jira2github.fetchAttachments(argv.file, argv.output, argv.json, argv.dryRun);
+        }
+    })
     .demandCommand(1)
     .env('J2GH')
     .alias('f', 'file')

@@ -3,6 +3,7 @@ import {XMLParser} from 'fast-xml-parser';
 import {readFile} from 'node:fs/promises';
 
 import gup from "./src/generateUserMap.js";
+import fetchFromJira from "./src/fetchFromJira.js";
 import * as import2github from "./src/importToGithub.js";
 import * as getAttachments from "./src/getAttachments.js";
 
@@ -101,3 +102,10 @@ export const importIssues = async function (fileName, output, userMapFileName, i
 
     jsonfile.writeFileSync(output, data, {spaces: 2});
 }
+
+export const fetchIssues = async function (url = "https://fluidproject.atlassian.net/rest/api/3/search/jql", params = `{"jql":"created < now() order by created ASC","fields":"*all"}`, output = "./issues.json") {
+
+    const issues = await fetchFromJira(url, JSON.parse(params));
+
+    jsonfile.writeFileSync(output, issues, {spaces: 2});
+};

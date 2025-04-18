@@ -79,6 +79,14 @@ yargs(hideBin(process.argv))
             jira2github.fetchAttachments(argv.file, argv.output, argv.json, argv.dryRun);
         }
     })
+    .command({
+        command: 'fetchIssues',
+        aliases: ['issues'],
+        desc: 'Retrieve issues from JIRA',
+        handler: async (argv) => {
+            jira2github.fetchIssues(argv.url, argv.params, argv.output);
+        }
+    })
     .demandCommand(1)
     .env('J2GH')
     .alias('f', 'file')
@@ -116,7 +124,13 @@ yargs(hideBin(process.argv))
     .nargs('titleType', 1)
     .describe('titleType', 'The format for the title can be "title" or "summary"; where title includes the origianl JIRA issue number.')
     .default('titleType', 'title')
-    .demandOption(['f'])
+    .alias('u', 'url')
+    .nargs('u', 1)
+    .describe('u', 'JIRA API URL to use for querying issues')
+    .alias('p', 'params')
+    .nargs('p', 1)
+    .describe('p', 'JIRA API query params for querying issues')
+    .demandOption()
     .help('h')
     .alias('h', 'help')
     .parse()

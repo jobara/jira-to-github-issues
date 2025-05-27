@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import jsonfile from 'jsonfile';
 import yargs from 'yargs';
 import {hideBin} from 'yargs/helpers'
 import * as jira2github from '../index.js'
@@ -48,27 +49,61 @@ yargs(hideBin(process.argv))
                 options.installationId = argv.installationId;
             }
 
-            if (argv.titleType) {
-                options.titleType = argv.titleType;
+            if (argv.includeKeyInTitle) {
+                options.includeKeyInTitle = argv.includeKeyInTitle;
             }
 
-            jira2github.importIssues(argv.file, argv.output, argv.map, argv.json, argv.dryRun, options);
+            if (argv.issueBaseUrl) {
+                options.issueBaseUrl = argv.issueBaseUrl;
+            }
+
+            if (argv.attachmentBaseUrl) {
+                options.attachmentBaseUrl = argv.attachmentBaseUrl;
+            }
+
+            if (argv.exclude) {
+                try {
+                    options.exclude = await jsonfile.readFile(argv.exclude);
+                } catch (err) {
+                    throw err;
+                }
+            }
+
+            if (argv.include) {
+                try {
+                    options.include = await jsonfile.readFile(argv.include);
+                } catch (err) {
+                    throw err;
+                }
+            }
+
+            if (argv.semver) {
+                options.semver = argv.semver;
+            }
+
+            jira2github.importIssues(argv.file, argv.output, argv.map, argv.vmap, argv.dryRun, options);
         }
     })
-    .command({
-        command: 'convertExportDataToJson',
-        aliases: ['convertExportDataToJson', 'toJson'],
-        desc: 'Converts the JIRA export data from XML to JSON',
-        handler: async (argv) => {
-            jira2github.exportDataToJson(argv.file, argv.output, argv.dryRun);
-        }
-    })
+    // .command({
+    //     command: 'convertExportDataToJson',
+    //     aliases: ['convertExportDataToJson', 'toJson'],
+    //     desc: 'Converts the JIRA export data from XML to JSON',
+    //     handler: async (argv) => {
+    //         jira2github.exportDataToJson(argv.file, argv.output, argv.dryRun);
+    //     }
+    // })
     .command({
         command: 'generateUserMap',
-        aliases: ['generateUserMap', 'idmap'],
         desc: 'Generate a user map which can be used to map JIRA user IDs to GitHub accounts.',
         handler: async (argv) => {
-            jira2github.generateUserMap(argv.file, argv.output, argv.json, argv.dryRun);
+            jira2github.generateUserMap(argv.file, argv.output, argv.dryRun);
+        }
+    })
+    .command({
+        command: 'generateMilestoneMap',
+        desc: 'Generate a milestone map which can be used to map JIRA versions to GitHub milestone ids.',
+        handler: async (argv) => {
+            jira2github.generateMilestoneMap(argv.file, argv.output, argv.dryRun, argv.semver);
         }
     })
     .command({
@@ -87,13 +122,38 @@ yargs(hideBin(process.argv))
             jira2github.fetchIssues(argv.url, argv.params, argv.output);
         }
     })
+    // .command({
+    //     command: 'getIssueTypes',
+    //     handler: async (argv) => {
+    //         jira2github.getIssueTypes(argv.file, argv.output);
+    //     }
+    // })
+    // .command({
+    //     command: 'getLabels',
+    //     handler: async (argv) => {
+    //         jira2github.getLabels(argv.file, argv.output);
+    //     }
+    // })
+    // .command({
+    //     command: 'getStatuses',
+    //     handler: async (argv) => {
+    //         jira2github.getStatuses(argv.file, argv.output);
+    //     }
+    // })
+    .command({
+        command: 'getKeys',
+        handler: async (argv) => {
+            jira2github.getKeys(argv.file, argv.output);
+        }
+    })
     .demandCommand(1)
     .env('J2GH')
     .alias('f', 'file')
     .nargs('f', 1)
     .describe('f', 'Path to JIRA export data file')
-    .boolean(['json', 'dry-run'])
-    .describe('json', 'Indicate if the JIRA export file is in JSON fortmat. Otherwise it is expected to be XML')
+    .boolean(['dry-run', 'include-key-in-title', 'semver'])
+    // .boolean(['json', 'dry-run'])
+    // .describe('json', 'Indicate if the JIRA export file is in JSON fortmat. Otherwise it is expected to be XML')
     .alias('dry-run', ['dryrun', 'dryRun', 'test'])
     .describe('dry-run', 'Print output to console; useful for testing before performing actions')
     .alias('o', 'output')
@@ -103,6 +163,9 @@ yargs(hideBin(process.argv))
     .alias('map', 'userMap')
     .nargs('map', 1)
     .describe('map', 'Path to user map; which maps the JIRA ids to GitHub accounts')
+    .alias('vmap', ['versionMap', 'milestoneMap'])
+    .nargs('vmap', 1)
+    .describe('vmap', 'Path to milestone map; which maps the JIRA versions to GitHub milestone ids')
     .alias('t', 'token')
     .nargs('t', 1)
     .describe('t', 'Personal Access token for connecting to GitHub.')
@@ -120,17 +183,27 @@ yargs(hideBin(process.argv))
     .alias('r', 'repo')
     .nargs('r', 1)
     .describe('r', 'Name of the GitHub repo to post the issues to.')
-    .alias('titleType', 'title-type')
-    .nargs('titleType', 1)
-    .describe('titleType', 'The format for the title can be "title" or "summary"; where title includes the origianl JIRA issue number.')
-    .default('titleType', 'title')
+    .alias('include-key-in-title', 'includeKeyInTitle')
+    .describe('include-key-in-title', 'Include the JIRA key in the GitHub issue title')
+    .describe('semver', 'Convert JIRA issue numbers to semver')
+    .default('semver', true)
+    .alias('issue-base-url', ['issueBaseUrl', 'issue_base_url'])
+    .nargs('issue-base-url', 1)
+    .describe('issue-base-url', 'The base URL to use for linking back to the original issue. For example to reference an alias url instead of the fetched url.')
+    .alias('attachment-base-url', ['attachmentBaseUrl', 'attachment_base_url'])
+    .nargs('attachment-base-url', 1)
+    .describe('attachment-base-url', 'The base URL to use for linking to the attachments. Use for example when the attachments are being hosted elsewhere.')
     .alias('u', 'url')
     .nargs('u', 1)
     .describe('u', 'JIRA API URL to use for querying issues')
     .alias('p', 'params')
     .nargs('p', 1)
     .describe('p', 'JIRA API query params for querying issues')
-    .demandOption()
+    .nargs('exclude', 1)
+    .describe('exclude', 'Issue keys to exclude. Takes precedence over include.')
+    .nargs('include', 1)
+    .describe('include', 'Issue keys to include')
+    // .demandOption()
     .help('h')
     .alias('h', 'help')
     .parse()

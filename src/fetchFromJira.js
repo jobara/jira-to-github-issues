@@ -2,9 +2,10 @@ import Bottleneck from "bottleneck";
 import {fromADF} from "mdast-util-from-adf";
 import {toMarkdown} from "mdast-util-to-markdown";
 import {gfmToMarkdown} from "mdast-util-gfm";
+import logger from './logger.js';
 
 export const adfToMd = function (adf) {
-    return toMarkdown(fromADF(value), {extensions: [gfmToMarkdown()]});
+    return toMarkdown(fromADF(adf), {extensions: [gfmToMarkdown()]});
 };
 
 export const replaceAdfWithMd = function (issue) {
@@ -20,7 +21,7 @@ export const replaceAdfWithMd = function (issue) {
 
     if (converted.fields?.comment?.comments?.length) {
         converted.fields.comment.comments = converted.fields.comment.comments.map(comment => {
-            return adfToMd(comment.body);
+            return {...comment, body: adfToMd(comment.body)}
         });
     }
 
@@ -29,17 +30,6 @@ export const replaceAdfWithMd = function (issue) {
 
 export const fetchIssues = async function (url, params, limiter) {
     let data = {};
-
-    // TODO: take this values in as parameters
-    // const url = "https://fluidproject.atlassian.net/rest/api/3/search/jql";
-    // const params = {
-    //     jql: "created < now() order by created ASC",
-    //     fields: "*all",
-    // };
-
-    // if (nextPageToken) {
-    //     params["nextPageToken"] = nextPageToken;
-    // }
 
     const query = new URLSearchParams(params);
 
@@ -51,8 +41,9 @@ export const fetchIssues = async function (url, params, limiter) {
         minTime: 100
     });
 
+    fetchLogger = logger.child({'query': `Loading page ${url}?${query}`});
     try {
-        console.log(`Loading page ${url}?${query}`);
+        fetchLogger.info('Fetch from JIRA API');
         const response = await limiter.schedule(() => fetch(`${url}?${query}`, {
             method: "GET",
             headers: {
@@ -69,6 +60,7 @@ export const fetchIssues = async function (url, params, limiter) {
         data = await response.json();
 
     } catch (error) {
+        fetchLogger.fail(error, 'Fetch failed');
         throw error;
     }
 

@@ -1,60 +1,41 @@
 import jsonfile from 'jsonfile';
-import {XMLParser} from 'fast-xml-parser';
-import {readFile} from 'node:fs/promises';
-
 import gup from "./src/generateUserMap.js";
+import gmp from "./src/generateMilestoneMap.js";
 import fetchFromJira from "./src/fetchFromJira.js";
 import * as import2github from "./src/importToGithub.js";
 import * as getAttachments from "./src/getAttachments.js";
 
-export const getXMLExportData = async function (fileName) {
-    const parser = new XMLParser({
-        removeNSPrefix: true,
-        ignoreAttributes: false,
-        parseTagValue: true,
-        parseAttributeValue: true,
-    });
-
-    let XMLdata;
+export const generateUserMap = async function (fileName, output, dryRun = false) {
     let exportData;
-
     try {
-        XMLdata = await readFile(fileName, {encoding: 'utf8'});
+        exportData = await jsonfile.readFile(fileName);
     } catch (err) {
         throw err;
     }
 
-    try {
-        exportData = parser.parse(XMLdata, true);
-    } catch (err) {
-        throw err;
-    }
-
-    return exportData;
-};
-
-export const exportDataToJson = async function (fileName, output, dryRun = false) {
-    let exportData = await getXMLExportData(fileName);
+    let userMap = gup(exportData);
 
     if (dryRun) {
-        console.log(JSON.stringify(exportData, null, 2));
+        console.log(JSON.stringify(userMap, null, 2));
     } else {
-        jsonfile.writeFileSync(output, exportData, {spaces: 2});
+        jsonfile.writeFileSync(output, userMap, {spaces: 2});
     }
 };
 
-export const generateUserMap = async function (fileName, output, isJSON = false, dryRun = false) {
+export const generateMilestoneMap = async function (fileName, output, dryRun = false, semver=true) {
     let exportData;
     try {
-        exportData = isJSON ? await jsonfile.readFile(fileName) : await getXMLExportData(fileName);
+        exportData = await jsonfile.readFile(fileName);
     } catch (err) {
         throw err;
     }
 
+    let milestoneMap = gmp(exportData, semver);
+
     if (dryRun) {
-        console.log(JSON.stringify(gup(exportData), null, 2));
+        console.log(JSON.stringify(milestoneMap, null, 2));
     } else {
-        jsonfile.writeFileSync(output, gup(exportData), {spaces: 2});
+        jsonfile.writeFileSync(output, milestoneMap, {spaces: 2});
     }
 };
 
@@ -74,11 +55,24 @@ export const fetchAttachments = async function (fileName, output, isJSON = false
     }
 };
 
+export const fetchIssues = async function (url = "https://fluidproject.atlassian.net/rest/api/3/search/jql", params = `{"jql":"project = FLUID AND resolution = Migrated ORDER BY created ASC","fields":"*all"}`, output = "./issues.json") {
+
+    const issues = await fetchFromJira(url, JSON.parse(params));
+
+    jsonfile.writeFileSync(output, issues, {spaces: 2});
+};
+
 /*
-    expected options are:  owner, repo, titleType, (token or appId, privateKey, installationId)
+    expected options are:
+    - owner
+    - repo
+    - (token or appId, privateKey, installationId)
+    - includeKeyInTitle
+    - issueBaseUrl
+    - attachmentBaseUrl
 */
-export const importIssues = async function (fileName, output, userMapFileName, isJSON = false, dryRun = false, options) {
-    let opts = {
+export const importIssues = async function (fileName, output, userMapFileName, milestoneMapFileName, dryRun = false, options) {
+    const opts = {
         ...options,
         dryRun: dryRun
     }
@@ -86,26 +80,89 @@ export const importIssues = async function (fileName, output, userMapFileName, i
     let exportData;
 
     try {
-        exportData = isJSON ? await jsonfile.readFile(fileName) : await getXMLExportData(fileName);
+        exportData = fileName ? await jsonfile.readFile(fileName) : fetchFromJira(opts.url, opts.params);
     } catch (err) {
         throw err;
     }
 
-    let userMap = userMapFileName ? await jsonfile.readFile(userMapFileName) : gup(exportData);
+    console.log(milestoneMapFileName);
 
-    let data = await import2github.submitIssue(exportData, userMap, opts);
+    const userMap = userMapFileName ? await jsonfile.readFile(userMapFileName) : gup(exportData);
+    const milestoneMap = milestoneMapFileName ? await jsonfile.readFile(milestoneMapFileName) : gmp(exportData);
 
-    if (dryRun) {
-        let numComments = data.issues.reduce((accumulator, issue) => accumulator + issue.comments.length, 0);
-        console.log(`issues: ${data.issues.length}\ncomments: ${numComments}\ntotal requests: ${data.issues.length + numComments}`);
-    }
+    const data = await import2github.submitIssue(exportData, userMap, milestoneMap, opts);
 
     jsonfile.writeFileSync(output, data, {spaces: 2});
 }
 
-export const fetchIssues = async function (url = "https://fluidproject.atlassian.net/rest/api/3/search/jql", params = `{"jql":"created < now() order by created ASC","fields":"*all"}`, output = "./issues.json") {
+// export const getIssueTypes = async function (fileName, output) {
+//     let exportData;
 
-    const issues = await fetchFromJira(url, JSON.parse(params));
+//     try {
+//         exportData = fileName ? await jsonfile.readFile(fileName) : fetchFromJira(opts.url, opts.params);
+//     } catch (err) {
+//         throw err;
+//     }
 
-    jsonfile.writeFileSync(output, issues, {spaces: 2});
+//     let data = exportData.reduce((accumulator, current) => {
+//         let issueType = current.fields.issuetype.name;
+
+//         if (!accumulator.includes(issueType)) {
+//             accumulator.push(issueType);
+//         }
+
+//         return accumulator;
+//     }, []);
+
+//     jsonfile.writeFileSync(output, data, {spaces: 2});
+// };
+
+// export const getLabels = async function (fileName, output) {
+//     let exportData;
+
+//     try {
+//         exportData = fileName ? await jsonfile.readFile(fileName) : fetchFromJira(opts.url, opts.params);
+//     } catch (err) {
+//         throw err;
+//     }
+
+//     let data = exportData.reduce((accumulator, current) => [...new Set([...accumulator, ...current.fields.labels])], []);
+
+//     jsonfile.writeFileSync(output, data, {spaces: 2});
+// };
+
+// export const getStatuses = async function (fileName, output) {
+//     let exportData;
+
+//     try {
+//         exportData = fileName ? await jsonfile.readFile(fileName) : fetchFromJira(opts.url, opts.params);
+//     } catch (err) {
+//         throw err;
+//     }
+
+//     let data = exportData.reduce((accumulator, current) => {
+//         let status = `${current.fields.statusCategory?.name} - ${current.fields.resolution?.name}`;
+
+//         if (!accumulator.includes(status)) {
+//             accumulator.push(status);
+//         }
+
+//         return accumulator;
+//     }, []);
+
+//     jsonfile.writeFileSync(output, data, {spaces: 2});
+// };
+
+export const getKeys = async function (fileName, output) {
+    let exportData;
+
+    try {
+        exportData = fileName ? await jsonfile.readFile(fileName) : fetchFromJira(opts.url, opts.params);
+    } catch (err) {
+        throw err;
+    }
+
+    let data = exportData.map(issue => issue.key);
+
+    jsonfile.writeFileSync(output, data, {spaces: 2});
 };

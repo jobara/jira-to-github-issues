@@ -2,3 +2,5 @@
 data
 node_modules
 output
+app.log
+output.json

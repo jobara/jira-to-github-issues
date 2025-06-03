@@ -39,16 +39,15 @@ export const generateMilestoneMap = async function (fileName, output, dryRun = f
     }
 };
 
-export const fetchAttachments = async function (fileName, output, isJSON = false, dryRun = false, options = {}) {
-    let exportData;
+export const fetchAttachments = async function (fileName, output, dryRun = false, options = {}) {
+    let result;
 
     try {
-        exportData = isJSON ? await jsonfile.readFile(fileName) : await getXMLExportData(fileName);
+        let exportData = await jsonfile.readFile(fileName);
+        result = await getAttachments.getAttachments(exportData, {outputPath: output, dryRun: dryRun, ...options});
     } catch (err) {
         throw err;
     }
-
-    let result = await getAttachments.getAttachments(exportData, {output: output, dryRun: dryRun, ...options});
 
     if (dryRun) {
         console.log(JSON.stringify(result, null, 2));

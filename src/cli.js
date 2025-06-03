@@ -25,12 +25,6 @@ yargs(hideBin(process.argv))
                 throw new Error("repo required");
             }
 
-            if (argv.repo) {
-                options.repo = argv.repo;
-            } else if (!argv.dryRun) {
-                throw new Error("repo required");
-            }
-
             if (argv.token) {
                 options.token = argv.token;
             } else if (!argv.dryRun && (!argv.appId || !argv.installationId || !argv.privateKey)) {
@@ -111,7 +105,7 @@ yargs(hideBin(process.argv))
         aliases: ['fetchAttachments', 'attachments'],
         desc: 'Download attachments',
         handler: async (argv) => {
-            jira2github.fetchAttachments(argv.file, argv.output, argv.json, argv.dryRun);
+            jira2github.fetchAttachments(argv.file, argv.output, argv.dryRun);
         }
     })
     .command({
@@ -154,16 +148,16 @@ yargs(hideBin(process.argv))
     .boolean(['dry-run', 'include-key-in-title', 'semver'])
     // .boolean(['json', 'dry-run'])
     // .describe('json', 'Indicate if the JIRA export file is in JSON fortmat. Otherwise it is expected to be XML')
-    .alias('dry-run', ['dryrun', 'dryRun', 'test'])
+    .alias('dry-run', ['dry_run', 'dryrun', 'dryRun', 'test'])
     .describe('dry-run', 'Print output to console; useful for testing before performing actions')
     .alias('o', 'output')
     .nargs('o', 1)
     .default('o', 'output.json')
     .describe('o', 'Path to write JSON output file to')
-    .alias('map', 'userMap')
+    .alias('map', ['userMap', 'user-map', 'user_map'])
     .nargs('map', 1)
     .describe('map', 'Path to user map; which maps the JIRA ids to GitHub accounts')
-    .alias('vmap', ['versionMap', 'milestoneMap'])
+    .alias('vmap', ['versionMap', 'version-map', 'version_map', 'milestoneMap', 'milestone-map', 'milestone_map'])
     .nargs('vmap', 1)
     .describe('vmap', 'Path to milestone map; which maps the JIRA versions to GitHub milestone ids')
     .alias('t', 'token')
@@ -175,7 +169,7 @@ yargs(hideBin(process.argv))
     .alias('installationId', ['installation-id', 'installationID', 'installation_id'])
     .nargs('installationId', 1)
     .describe('installationId', 'Installation ID of GitHub App for connecting to GitHub.')
-    .alias('privateKey', ['private-key', 'privateKey', 'private_key'])
+    .alias('privateKey', ['private-key', 'private_key'])
     .nargs('privateKey', 1)
     .describe('privateKey', 'Private Key of GitHub App for connecting to GitHub.')
     .nargs('owner', 1)
@@ -183,7 +177,7 @@ yargs(hideBin(process.argv))
     .alias('r', 'repo')
     .nargs('r', 1)
     .describe('r', 'Name of the GitHub repo to post the issues to.')
-    .alias('include-key-in-title', 'includeKeyInTitle')
+    .alias('include-key-in-title', ['includeKeyInTitle', '--include_key_in_title'])
     .describe('include-key-in-title', 'Include the JIRA key in the GitHub issue title')
     .describe('semver', 'Convert JIRA issue numbers to semver')
     .default('semver', true)

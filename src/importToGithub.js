@@ -363,17 +363,6 @@ export const submitIssue = async function (exportData, userMap, milestoneMap, op
         ...options
     }
 
-    // logger.info({
-    //     'dry-run': opts.dryRun,
-    //     'exclude': opts.exclude || [],
-    //     'include': opts.include || []
-    // }, 'Begin JIRA to GitHub issues import');
-
-    // let filterLogger = logger.child({
-    //     'exclude': opts.exclude || [],
-    //     'include': opts.include || []
-    // })
-
     // filterLogger.info('JIRA issues to filter');
 
     let filtered = opts.exclude.length || opts.include.length ? exportData.filter(issue => {

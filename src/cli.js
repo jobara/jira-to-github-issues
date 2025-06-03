@@ -78,14 +78,6 @@ yargs(hideBin(process.argv))
             jira2github.importIssues(argv.file, argv.output, argv.map, argv.vmap, argv.dryRun, options);
         }
     })
-    // .command({
-    //     command: 'convertExportDataToJson',
-    //     aliases: ['convertExportDataToJson', 'toJson'],
-    //     desc: 'Converts the JIRA export data from XML to JSON',
-    //     handler: async (argv) => {
-    //         jira2github.exportDataToJson(argv.file, argv.output, argv.dryRun);
-    //     }
-    // })
     .command({
         command: 'generateUserMap',
         desc: 'Generate a user map which can be used to map JIRA user IDs to GitHub accounts.',
@@ -116,38 +108,12 @@ yargs(hideBin(process.argv))
             jira2github.fetchIssues(argv.url, argv.params, argv.output);
         }
     })
-    // .command({
-    //     command: 'getIssueTypes',
-    //     handler: async (argv) => {
-    //         jira2github.getIssueTypes(argv.file, argv.output);
-    //     }
-    // })
-    // .command({
-    //     command: 'getLabels',
-    //     handler: async (argv) => {
-    //         jira2github.getLabels(argv.file, argv.output);
-    //     }
-    // })
-    // .command({
-    //     command: 'getStatuses',
-    //     handler: async (argv) => {
-    //         jira2github.getStatuses(argv.file, argv.output);
-    //     }
-    // })
-    .command({
-        command: 'getKeys',
-        handler: async (argv) => {
-            jira2github.getKeys(argv.file, argv.output);
-        }
-    })
     .demandCommand(1)
     .env('J2GH')
     .alias('f', 'file')
     .nargs('f', 1)
     .describe('f', 'Path to JIRA export data file')
     .boolean(['dry-run', 'include-key-in-title', 'semver'])
-    // .boolean(['json', 'dry-run'])
-    // .describe('json', 'Indicate if the JIRA export file is in JSON fortmat. Otherwise it is expected to be XML')
     .alias('dry-run', ['dry_run', 'dryrun', 'dryRun', 'test'])
     .describe('dry-run', 'Print output to console; useful for testing before performing actions')
     .alias('o', 'output')
@@ -197,7 +163,6 @@ yargs(hideBin(process.argv))
     .describe('exclude', 'Issue keys to exclude. Takes precedence over include.')
     .nargs('include', 1)
     .describe('include', 'Issue keys to include')
-    // .demandOption()
     .help('h')
     .alias('h', 'help')
     .parse()

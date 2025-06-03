@@ -61,15 +61,6 @@ export const fetchIssues = async function (url = "https://fluidproject.atlassian
     jsonfile.writeFileSync(output, issues, {spaces: 2});
 };
 
-/*
-    expected options are:
-    - owner
-    - repo
-    - (token or appId, privateKey, installationId)
-    - includeKeyInTitle
-    - issueBaseUrl
-    - attachmentBaseUrl
-*/
 export const importIssues = async function (fileName, output, userMapFileName, milestoneMapFileName, dryRun = false, options) {
     const opts = {
         ...options,
@@ -90,78 +81,6 @@ export const importIssues = async function (fileName, output, userMapFileName, m
     const milestoneMap = milestoneMapFileName ? await jsonfile.readFile(milestoneMapFileName) : gmp(exportData);
 
     const data = await import2github.submitIssue(exportData, userMap, milestoneMap, opts);
-
-    jsonfile.writeFileSync(output, data, {spaces: 2});
-}
-
-// export const getIssueTypes = async function (fileName, output) {
-//     let exportData;
-
-//     try {
-//         exportData = fileName ? await jsonfile.readFile(fileName) : fetchFromJira(opts.url, opts.params);
-//     } catch (err) {
-//         throw err;
-//     }
-
-//     let data = exportData.reduce((accumulator, current) => {
-//         let issueType = current.fields.issuetype.name;
-
-//         if (!accumulator.includes(issueType)) {
-//             accumulator.push(issueType);
-//         }
-
-//         return accumulator;
-//     }, []);
-
-//     jsonfile.writeFileSync(output, data, {spaces: 2});
-// };
-
-// export const getLabels = async function (fileName, output) {
-//     let exportData;
-
-//     try {
-//         exportData = fileName ? await jsonfile.readFile(fileName) : fetchFromJira(opts.url, opts.params);
-//     } catch (err) {
-//         throw err;
-//     }
-
-//     let data = exportData.reduce((accumulator, current) => [...new Set([...accumulator, ...current.fields.labels])], []);
-
-//     jsonfile.writeFileSync(output, data, {spaces: 2});
-// };
-
-// export const getStatuses = async function (fileName, output) {
-//     let exportData;
-
-//     try {
-//         exportData = fileName ? await jsonfile.readFile(fileName) : fetchFromJira(opts.url, opts.params);
-//     } catch (err) {
-//         throw err;
-//     }
-
-//     let data = exportData.reduce((accumulator, current) => {
-//         let status = `${current.fields.statusCategory?.name} - ${current.fields.resolution?.name}`;
-
-//         if (!accumulator.includes(status)) {
-//             accumulator.push(status);
-//         }
-
-//         return accumulator;
-//     }, []);
-
-//     jsonfile.writeFileSync(output, data, {spaces: 2});
-// };
-
-export const getKeys = async function (fileName, output) {
-    let exportData;
-
-    try {
-        exportData = fileName ? await jsonfile.readFile(fileName) : fetchFromJira(opts.url, opts.params);
-    } catch (err) {
-        throw err;
-    }
-
-    let data = exportData.map(issue => issue.key);
 
     jsonfile.writeFileSync(output, data, {spaces: 2});
 };

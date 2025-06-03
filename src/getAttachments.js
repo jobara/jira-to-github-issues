@@ -1,74 +1,93 @@
-import url from 'node:url';
 import path from 'node:path';
 import {createWriteStream} from "node:fs";
 import {mkdir} from "node:fs/promises";
 import {Readable} from "node:stream";
 import {pipeline} from "node:stream/promises";
-import * as utils from "./utils.js";
+import logger from './logger.js';
 
 import Bottleneck from "bottleneck";
 
-export const compileAttachments = function (issues, options) {
+export const compileAttachments = function (issues, outputPath = "./") {
     let attachments = [];
 
-    utils.makeArray(issues).forEach(issue => {
-        let issueURL = new URL(issue.link);
+    issues.forEach(issue => {
+        let issueURL = new URL(issue.self);
+        issueURL.pathname = `browse/${issue.key}/`;
 
-        let project = issue.project["@_key"];
-        let key = issue.key["#text"];
+        let project = issue.fields.project.key;
 
-        utils.makeArray(issue.attachments.attachment).forEach(attachment => {
-            if (attachment) {
-                issueURL.pathname = `/rest/api/3/attachment/content/${attachment["@_id"]}`;
-
-                attachments.push({
-                    source: issueURL.href,
-                    destination: path.join(options?.output ?? "./", project, key, attachment["@_name"])
-                });
-            }
+        (issue.fields.attachment ?? []).forEach(attachment => {
+            attachments.push({
+                source: attachment.content,
+                destination: path.join(outputPath, project, issue.key, attachment.filename),
+                size: attachment.size,
+                mimeType: attachment.mimeType
+            });
         });
     });
 
     return attachments;
 };
 
-export const retrieveAttachment = async function (attachment, options) {
+export const retrieveAttachment = async function (attachment) {
+    let attachmentLogger = logger.child(attachment);
+
+    attachmentLogger.info("Fetch attachment");
     const resp = await fetch(attachment.source);
+    attachmentLogger.info("Attachment fetched");
 
+    attachmentLogger.info("Create destination directory in needed");
     await mkdir(path.dirname(attachment.destination), {recursive: true});
+    attachmentLogger.info("Destination directory available");
 
-    return await pipeline(
+    attachmentLogger.info("Write attachment");
+    await pipeline(
         Readable.fromWeb(resp.body),
         createWriteStream(attachment.destination)
     );
+    attachmentLogger.info("Attachment written");
 };
 
-export const retrieveAttachments = async function (attachments, options) {
+export const retrieveAttachments = async function (attachments, options = {}) {
     const limiter = new Bottleneck({
         reservoir: 500,
         reservoirRefreshAmount: 500,
         reservoirRefreshInterval: 5 * 60 * 1000,
         maxConcurrent: 1,
-        minTime: 200
+        minTime: 200,
+        ...options
     });
 
+    let attachmentsLogger = logger.child({attachments: attachments.length});
+
+    attachmentsLogger.info('Begin retrieving attachments from JIRA')
     for (const attachment of attachments) {
-        await limiter.schedule(() => retrieveAttachment(attachment, options));
+        await limiter.schedule(() => retrieveAttachment(attachment));
     }
+    attachmentsLogger.info('Completed retrieving attachments from JIRA')
 };
 
-export const getAttachments = async function (jiraExportData, options) {
-    let opts = {
-        output: "./",
-        dryRun: false,
-        ...options
+export const getAttachments = async function (jiraExportData, options = {}) {
+    let {dryRun, rateLimit, outputPath} = options;
+
+    logger.info({
+        'dry-run': dryRun ?? false,
+        'rateLimit': rateLimit,
+        'total-issues': jiraExportData.length,
+    }, 'Begin fetching JIRA attachments');
+
+    let attachments = compileAttachments(jiraExportData, outputPath);
+
+    if (!dryRun) {
+        try {
+            await retrieveAttachments(attachments, rateLimit);
+        } catch (error) {
+            logger.fail(error, 'failed fetching JIRA attachments');
+            throw (error);
+        }
     }
 
-    let attachments = compileAttachments(jiraExportData.rss.channel.item, options);
+    logger.info('Completed fetching JIRA attachments');
 
-    if (opts.dryRun) {
-        return {attachments: attachments};
-    }
-
-    return await retrieveAttachments(attachments, opts);
+    return {attachments: attachments};
 };
